@@ -1,0 +1,81 @@
+/* VARIABLES 2026 */
+:root {
+    --bg-dark: #0a0e17;
+    --panel-bg: rgba(30, 41, 59, 0.7);
+    --primary: #38bdf8;
+    --accent: #f472b6;
+    --success: #00e676;
+    --text-main: #ffffff;
+    --text-muted: #94a3b8;
+    --border: rgba(255, 255, 255, 0.1);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Outfit', sans-serif;
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* LAYOUT STRUCTURE */
+.app-wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* SIDEBAR STYLING */
+.sidebar {
+    width: 280px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(15px);
+    border-right: 1px solid var(--border);
+    padding: 30px 20px;
+    position: fixed;
+    height: 100vh;
+}
+
+.content-body {
+    flex: 1;
+    margin-left: 280px;
+    padding: 40px;
+}
+
+/* BUTTONS */
+.btn {
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    border: none;
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-block;
+    text-decoration: none;
+    text-align: center;
+}
+
+.btn-primary { background: var(--primary); color: #000; }
+.btn-primary:hover { background: #fff; transform: translateY(-2px); }
+
+/* CARDS SERVICE */
+.card {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 25px;
+    transition: 0.3s;
+}
+
+.card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 10px 30px rgba(56, 189, 248, 0.1);
+}
+
+/* RESPONSIVE */
+@media (max-width: 992px) {
+    .sidebar { width: 80px; padding: 20px 10px; }
+    .sidebar span, .sidebar .user-info, .sidebar .nav-label { display: none; }
+    .content-body { margin-left: 80px; }
+}
