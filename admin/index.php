@@ -1,151 +1,126 @@
 <?php
 /**
  * PROJECT: SOCIALMARKET PRO
- * PAGE: INDEX / LOGIN (CONNEXION)
+ * PAGE: ADMIN DASHBOARD (INDEX)
  * DEVELOPER: BLADE
  */
 
 session_start();
-require_once 'includes/db.php';
-require_once 'includes/functions.php';
+require_once '../includes/db.php';
+require_once '../includes/functions.php';
 
-// Si l'utilisateur est déjà connecté, on le propulse au dashboard
-if (isset($_SESSION['user_id'])) {
-    header("Location: dashboard.php");
-    exit();
-}
+// 1. SÉCURITÉ : Vérification stricte du rôle Admin
+confirm_admin();
 
-$error = "";
+// 2. RÉCUPÉRATION DES STATISTIQUES GLOBALES
+// Total des utilisateurs
+$total_users = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'user'")->fetchColumn();
 
-// LOGIQUE DE CONNEXION
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = trim(e($_POST['username']));
-    $password = $_POST['password'];
+// Revenus totaux (Argent dépensé par les clients)
+$total_revenue = $pdo->query("SELECT SUM(price_at_purchase) FROM orders")->fetchColumn() ?? 0;
 
-    if (!empty($username) && !empty($password)) {
-        // Recherche de l'utilisateur
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
-        $stmt->execute([$username]);
-        $user = $stmt->fetch();
+// Dépôts en attente (Argent à valider)
+$pending_deposits_count = $pdo->query("SELECT COUNT(*) FROM deposits WHERE status = 'pending'")->fetchColumn();
 
-        // Vérification du mot de passe haché (Sécurité Blade)
-        if ($user && password_verify($password, $user['password'])) {
-            // Création de la session
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role'];
-
-            header("Location: dashboard.php");
-            exit();
-        } else {
-            $error = "Identifiants invalides ou compte inexistant.";
-        }
-    } else {
-        $error = "Veuillez remplir tous les champs.";
-    }
-}
+// Dernières commandes
+$recent_orders = $pdo->query("SELECT o.*, u.username, p.name as product_name 
+                             FROM orders o 
+                             JOIN users u ON o.user_id = u.id 
+                             JOIN products p ON o.product_id = p.id 
+                             ORDER BY o.order_date DESC LIMIT 5")->fetchAll();
 ?>
 
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connexion | SocialMarket</title>
+    <title>Blade Panel | Administration</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;600;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            background: #0a0e17;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            overflow: hidden;
+        .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .stat-card-admin { 
+            background: #151a25; padding: 25px; border-radius: 20px; border-left: 4px solid #38bdf8;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
+        .stat-card-admin h3 { color: #64748b; font-size: 0.8rem; text-transform: uppercase; margin: 0; }
+        .stat-card-admin p { font-size: 1.8rem; font-weight: 900; margin: 10px 0 0; }
 
-        /* Effet de fond lumineux */
-        .bg-glow {
-            position: absolute;
-            width: 300px;
-            height: 300px;
-            background: var(--primary);
-            filter: blur(150px);
-            opacity: 0.2;
-            z-index: -1;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        .login-card {
-            background: rgba(21, 26, 37, 0.7);
-            backdrop-filter: blur(20px);
-            padding: 50px;
-            border-radius: 32px;
-            border: 1px solid rgba(255,255,255,0.05);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-
-        .login-card h1 { font-weight: 900; font-size: 2.2rem; margin-bottom: 10px; }
-        .login-card p { color: #94a3b8; margin-bottom: 30px; font-size: 0.9rem; }
-
-        .input-group { text-align: left; margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+        .admin-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
+        .admin-panel-box { background: rgba(21, 26, 37, 0.6); padding: 30px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
         
-        input {
-            width: 100%; padding: 16px; background: #0f172a; border: 1px solid #1e293b;
-            border-radius: 14px; color: white; font-family: 'Outfit'; box-sizing: border-box;
-            transition: 0.3s;
+        .quick-actions a {
+            display: flex; align-items: center; gap: 15px; padding: 15px;
+            background: #0a0e17; margin-bottom: 10px; border-radius: 12px;
+            text-decoration: none; color: white; transition: 0.3s;
         }
-        input:focus { border-color: #38bdf8; outline: none; box-shadow: 0 0 15px rgba(56, 189, 248, 0.1); }
-
-        .btn-login {
-            width: 100%; padding: 18px; background: #38bdf8; color: #000; border: none;
-            border-radius: 14px; font-weight: 900; font-size: 1rem; cursor: pointer;
-            transition: 0.3s; margin-top: 10px;
-        }
-        .btn-login:hover { background: #fff; transform: scale(1.02); }
-
-        .alert { background: rgba(255, 51, 102, 0.1); color: #ff3366; padding: 12px; border-radius: 10px; border: 1px solid #ff3366; margin-bottom: 20px; font-size: 0.85rem; }
-        
-        .footer-links { margin-top: 25px; font-size: 0.85rem; color: #64748b; }
-        .footer-links a { color: #38bdf8; text-decoration: none; font-weight: 700; }
+        .quick-actions a:hover { background: #38bdf8; color: #000; }
     </style>
 </head>
-<body>
+<body style="background: #0a0e17; color: white; padding: 40px;">
 
-<div class="bg-glow"></div>
-
-<div class="login-card">
-    <h1>BIENVENUE</h1>
-    <p>Connectez-vous pour accéder à vos services</p>
-
-    <?php if($error): ?>
-        <div class="alert"><?php echo $error; ?></div>
-    <?php endif; ?>
-
-    <form method="POST">
-        <div class="input-group">
-            <label>NOM D'UTILISATEUR</label>
-            <input type="text" name="username" placeholder="Entrez votre pseudo" required>
+    <header style="margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 style="font-weight: 900; font-size: 2.2rem; color: #38bdf8;">BLADE PANEL 🛡️</h1>
+            <p style="color: #94a3b8;">Vue d'ensemble de votre business SocialMarket</p>
         </div>
+        <a href="../dashboard.php" class="btn btn-primary" style="background: #fff; color: #000;">VOIR LE SITE</a>
+    </header>
 
-        <div class="input-group">
-            <label>MOT DE PASSE</label>
-            <input type="password" name="password" placeholder="••••••••" required>
+    <div class="admin-stats">
+        <div class="stat-card-admin">
+            <h3>Membres Totaux</h3>
+            <p><?php echo $total_users; ?></p>
         </div>
-
-        <button type="submit" class="btn-login">ACCÉDER AU DASHBOARD</button>
-    </form>
-
-    <div class="footer-links">
-        Pas encore membre ? <a href="register.php">Créer un compte Blade</a>
+        <div class="stat-card-admin" style="border-left-color: #00e676;">
+            <h3>Chiffre d'Affaire</h3>
+            <p>RS <?php echo number_format($total_revenue, 0); ?></p>
+        </div>
+        <div class="stat-card-admin" style="border-left-color: #ffab00;">
+            <h3>Dépôts à valider</h3>
+            <p><?php echo $pending_deposits_count; ?></p>
+        </div>
     </div>
-</div>
+
+    <div class="admin-grid">
+        <div class="admin-panel-box">
+            <h2 style="margin-bottom: 20px; font-size: 1.2rem;">Dernières Commandes Clients</h2>
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <thead>
+                    <tr style="text-align: left; color: #64748b;">
+                        <th style="padding-bottom: 15px;">Client</th>
+                        <th style="padding-bottom: 15px;">Service</th>
+                        <th style="padding-bottom: 15px;">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach($recent_orders as $order): ?>
+                    <tr style="border-top: 1px solid rgba(255,255,255,0.05);">
+                        <td style="padding: 15px 0;"><strong><?php echo e($order['username']); ?></strong></td>
+                        <td><?php echo e($order['product_name']); ?></td>
+                        <td style="color: #64748b;"><?php echo time_ago($order['order_date']); ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="admin-panel-box">
+            <h2 style="margin-bottom: 20px; font-size: 1.2rem;">Actions Rapides</h2>
+            <div class="quick-actions">
+                <a href="manage_deposits.php">
+                    <i class="fas fa-money-check-alt"></i> Valider les fonds (<?php echo $pending_deposits_count; ?>)
+                </a>
+                <a href="add_product.php">
+                    <i class="fas fa-plus-circle"></i> Ajouter un Service
+                </a>
+                <a href="manage_users.php">
+                    <i class="fas fa-users"></i> Gérer les Utilisateurs
+                </a>
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>
