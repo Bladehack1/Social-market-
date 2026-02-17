@@ -1,73 +1,135 @@
-<?php 
+<?php
+/**
+ * PROJECT: SOCIALMARKET PRO
+ * PAGE: INDEX (ROOT) - Login & Welcome
+ * DEVELOPER: BLADE
+ */
+
 session_start();
 require_once 'includes/db.php';
+require_once 'includes/functions.php';
+
+// Si déjà connecté, on saute direct au dashboard
+if (isset($_SESSION['user_id'])) {
+    header("Location: dashboard.php");
+    exit();
+}
 
 $error = "";
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = htmlspecialchars($_POST['username']);
+// LOGIQUE DE CONNEXION
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
+    $username = trim($_POST['username']);
     $password = $_POST['password'];
 
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
-    $stmt->execute([$username]);
-    $user = $stmt->fetch();
+    if (!empty($username) && !empty($password)) {
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
+        $stmt->execute([$username]);
+        $user = $stmt->fetch();
 
-    if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['role'] = $user['role'];
-        $_SESSION['username'] = $user['username'];
-        header("Location: dashboard.php");
-        exit();
+        if ($user && password_verify($password, $user['password'])) {
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role'];
+            header("Location: dashboard.php");
+            exit();
+        } else {
+            $error = "Pseudo ou mot de passe incorrect.";
+        }
     } else {
-        $error = "Identifiants incorrects, Blade.";
+        $error = "Veuillez remplir tous les champs.";
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SocialMarket | Connexion</title>
+    <title>SocialMarket | Bienvenue</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <style>
-        :root {
-            --primary: #0061FF;
-            --glass: rgba(255, 255, 255, 0.8);
-        }
         body {
-            margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center;
-            font-family: 'Inter', system-ui; background: #f0f2f5;
+            margin: 0; padding: 0;
+            background: #0f172a;
+            color: white;
+            display: flex; align-items: center; justify-content: center;
+            height: 100vh;
+            overflow: hidden;
         }
-        .login-card {
-            background: var(--glass); backdrop-filter: blur(10px);
-            padding: 40px; border-radius: 28px; width: 100%; max-width: 360px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.05); border: 1px solid white;
+
+        .hero-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            width: 100%; max-width: 1200px;
+            gap: 50px; padding: 20px;
         }
-        h2 { text-align: center; color: #1a1a1a; margin-bottom: 30px; }
+
+        .hero-text { display: flex; flex-direction: column; justify-content: center; }
+        .hero-text h1 { font-size: 4rem; line-height: 1.1; margin: 0; font-weight: 900; }
+        .hero-text span { color: #38bdf8; }
+        .hero-text p { color: #94a3b8; font-size: 1.2rem; margin-top: 20px; }
+
+        .login-box {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(20px);
+            padding: 40px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
         input {
-            width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px;
-            border: 1px solid #ddd; box-sizing: border-box; font-size: 16px;
+            width: 100%; padding: 15px; margin-top: 10px; margin-bottom: 20px;
+            background: #0a0e17; border: 1px solid #1e293b; border-radius: 12px;
+            color: white; box-sizing: border-box;
         }
-        button {
-            width: 100%; padding: 14px; border: none; border-radius: 12px;
-            background: var(--primary); color: white; font-weight: bold; cursor: pointer;
-            transition: 0.3s; font-size: 16px;
+
+        .btn-submit {
+            width: 100%; padding: 16px; background: #38bdf8; color: #000;
+            border: none; border-radius: 12px; font-weight: 900; cursor: pointer;
         }
-        button:hover { opacity: 0.9; transform: translateY(-2px); }
-        .error { color: #ff385c; text-align: center; margin-bottom: 15px; font-size: 14px; }
-        .link { text-align: center; margin-top: 20px; font-size: 14px; color: #666; }
+
+        .error-msg { background: rgba(255, 51, 102, 0.1); color: #ff3366; padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+
+        @media (max-width: 900px) {
+            .hero-section { grid-template-columns: 1fr; text-align: center; }
+            .hero-text h1 { font-size: 2.5rem; }
+            .hero-text p { display: none; }
+        }
     </style>
 </head>
 <body>
-    <div class="login-card">
-        <h2>USER LOGIN</h2>
-        <?php if($error): ?> <div class="error"><?php echo $error; ?></div> <?php endif; ?>
-        <form method="POST">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">LOGIN NOW</button>
-        </form>
-        <div class="link">Pas encore de compte ? <a href="register.php" style="color:var(--primary)">S'inscrire</a></div>
+
+    <div class="hero-section">
+        <div class="hero-text">
+            <h1>Boostez votre <span>Présence Digitale</span></h1>
+            <p>La plateforme n°1 pour les services premium. Fiable, rapide et sécurisée par Blade.</p>
+        </div>
+
+        <div class="login-box">
+            <h2 style="margin-top:0">Connexion</h2>
+            
+            <?php if($error): ?>
+                <div class="error-msg"><?php echo $error; ?></div>
+            <?php endif; ?>
+
+            <form method="POST">
+                <label>NOM D'UTILISATEUR</label>
+                <input type="text" name="username" placeholder="Pseudo" required>
+
+                <label>MOT DE PASSE</label>
+                <input type="password" name="password" placeholder="••••••••" required>
+
+                <button type="submit" name="login" class="btn-submit">SE CONNECTER</button>
+            </form>
+            
+            <p style="text-align:center; font-size: 0.9rem; margin-top:20px;">
+                Nouveau ici ? <a href="register.php" style="color:#38bdf8; text-decoration:none">Créer un compte</a>
+            </p>
+        </div>
     </div>
+
 </body>
 </html>
